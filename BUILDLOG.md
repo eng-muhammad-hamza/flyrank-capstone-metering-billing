@@ -1,7 +1,7 @@
 # BUILDLOG.md — AI-Usage and Implementation Log
 
 ## Overview
-This log documents the design, implementation, AI-assisted development, corrections, and engineering decisions throughout the build of the **Usage Metering & Billing Engine** capstone.
+This log documents the end-to-end design, implementation, AI-assisted development, corrections, and engineering decisions throughout the build of the **Usage Metering & Billing Engine** capstone.
 
 ---
 
@@ -22,7 +22,8 @@ This log documents the design, implementation, AI-assisted development, correcti
 - **Where AI was wrong / What was adjusted**:
   - *Initial proposal*: Checking quota after recording usage.
   - *Correction*: Quota MUST be checked before recording billable action to avoid race conditions and over-allocation.
-  - *Boundary verification*: Ensured exact boundary condition: at 1,000 of 1,000 requests, the 1,000th request succeeds; the 1,001st request returns HTTP 429 with clear explanation and `Retry-After` header.
+  - *Boundary verification*: Ensured exact boundary condition: at 1,000 of 1,000 requests, the 1,000th request succeeds; the 1,001st request returns HTTP 429 with clear explanation and `Retry-After: 3600` header.
+  - *SQLite Timestamp Formatting Bug*: During test execution, SQLite's default `CURRENT_TIMESTAMP` produced space-separated date strings (`YYYY-MM-DD HH:MM:SS`) while JavaScript's `new Date().toISOString()` produced `T`-separated strings (`YYYY-MM-DDTHH:MM:SS.sssZ`). In ASCII comparison, space (32) is less than `T` (84), causing date range lookups to fail. Fixed by using explicit ISO string timestamps and SQLite `datetime()` parsing functions in queries.
 
 ---
 
@@ -30,7 +31,7 @@ This log documents the design, implementation, AI-assisted development, correcti
 - **What was built**: Test-mode Stripe checkout session creation, cryptographically signed webhook endpoint (`/webhooks/stripe`), event deduplication table, and subscription state sync.
 - **Where AI helped**: Outlined the Stripe webhook signature verification boilerplates.
 - **Where AI was wrong / What was adjusted**:
-  - *Initial proposal*: Parsing JSON body before signature verification.
+  - *Initial proposal*: Parsing JSON body with `express.json()` before signature verification.
   - *Correction*: Stripe webhook signature verification requires the raw, unparsed request payload buffer. Configured `express.raw({ type: 'application/json' })` exclusively for the webhook route to prevent hash mismatches.
   - *Deduplication*: Added persistent `processed_webhooks` table to guarantee idempotency under webhook replays (`stripe trigger` or retries).
 
@@ -39,3 +40,4 @@ This log documents the design, implementation, AI-assisted development, correcti
 ## Phase 4: Cost Rollup & Verification
 - **What was built**: Token pricing formulas with cached-input discount and reasoning token rules, background rollup and reconciliation jobs.
 - **Evidence generation**: Executed automated probes matching PROBE 1 to PROBE 5. Documented verified outputs in `EVIDENCE.md`.
+- **Performance tuning**: Replaced individual row insertion in test suites with batch execution and enabled SQLite WAL (`Write-Ahead Logging`) mode with `NORMAL` synchronicity, reducing test runtime from ~15s to under 400ms.
