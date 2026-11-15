@@ -1,0 +1,50 @@
+# Capstone Evaluation Manifest
+# Usage Metering & Billing Engine
+
+run: npm start
+seed: npm run seed
+test: npm test
+
+base_url: http://localhost:3000
+
+endpoints:
+  health:
+    method: GET
+    path: /health
+    description: Health check and service readiness
+
+  billable_generate:
+    method: POST
+    path: /generate
+    headers:
+      X-Tenant-ID: tenant_default
+      Idempotency-Key: demo-key-1
+    body:
+      input_tokens: 1000
+      cached_tokens: 500
+      output_tokens: 400
+      reasoning_tokens: 100
+    description: Billable simulated AI generation with idempotency and quota enforcement
+
+  usage_rollup:
+    method: GET
+    path: /usage?tenant_id=tenant_default
+    headers:
+      X-Tenant-ID: tenant_default
+    description: Monthly aggregated usage and cost rollup
+
+  checkout_session:
+    method: POST
+    path: /checkout/session
+    body:
+      tenant_id: tenant_default
+      success_url: http://localhost:3000/success
+      cancel_url: http://localhost:3000/cancel
+    description: Stripe Checkout Session creation for upgrading to Pro
+
+  stripe_webhook:
+    method: POST
+    path: /webhooks/stripe
+    headers:
+      Stripe-Signature: test_signature
+    description: Stripe signed and deduplicated webhook listener
